@@ -1,0 +1,131 @@
+---
+title: "PCA_analyses"
+author: "Angela Jiang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r install}
+library(SNPRelate)
+library(gdsfmt)
+library(tidyverse)
+library(SeqArray)
+
+metadata <- read.csv("metadata_tcruzi.csv")
+```
+
+## IConverting VCF to GDS
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+vcf.fn <- "/Users/angela/Documents/machado_lab/Tcruzi_nuclear_SNPs.vcf.gz"
+vcf.fn_mt <- "Tcruzi_mtDNA_SNPs.vcf.gz"
+seqVCF2GDS(vcf.fn, "test.gds")
+seqVCF2GDS(vcf.fn_mt, "mt.gds")
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+## IConverting VCF to GDS
+
+You can also embed plots, for example:
+
+```{r pca, echo=FALSE}
+library(SeqArray)
+genofile <- seqOpen("test.gds")
+
+list <- 1:35
+
+(samp.id <- seqGetData(genofile, "sample.id"))
+samp.id.selected <- samp.id[!str_detect(samp.id, "TcV") ]
+head(variant.id <- seqGetData(genofile, "variant.id"))
+seqSetFilter(genofile, sample.id=samp.id.selected)
+
+#snpgdsSummary(genofile)
+snpset <- snpgdsLDpruning(genofile, 
+                          sample.id = samp.id.selected,
+                          ld.threshold=0.2,autosome.only = FALSE)
+snpset.id <- unlist(unname(snpset))
+pca <- snpgdsPCA(genofile, sample.id=samp.id.selected,snp.id=snpset.id, num.thread=2,autosome.only=FALSE)
+pc.percent <- pca$varprop*100
+head(round(pc.percent, 2))
+
+tab <- data.frame(sample.id = pca$sample.id,
+    EV1 = pca$eigenvect[,1],    # the first eigenvector
+    EV2 = pca$eigenvect[,2],    # the second eigenvector
+    stringsAsFactors = FALSE)
+
+tab_m <- merge(tab, metadata)
+
+ggplot(tab_m, aes(x=EV1, y=EV2, color = DTU)) +
+  geom_point(size = 3, shape=21, aes(fill = DTU),alpha = 0.8) +
+  theme_classic()
+#plot(tab_m$EV2, tab_m$EV1, xlab="PC1", ylab="PC2", col=tab_m$DTU)
+
+
+seqClose(genofile)
+
+```
+
+```{r clustering_denodrogram, echo=FALSE}
+ibs <- snpgdsIBS(genofile, num.thread=2,autosome.only = FALSE)
+
+set.seed(100)
+ibs.hc <- snpgdsHCluster(snpgdsIBS(genofile, num.thread=2,autosome.only=FALSE))
+rv <- snpgdsCutTree(ibs.hc)
+plot(rv$dendrogram, leaflab="none", main="T. cruzi dendrogram")
+
+snpgdsClose(genofile)
+
+```
+
+```{r mt_pca, echo=FALSE}
+genofile_mt <- seqOpen("mt.gds")
+set.seed(100)
+
+list <- 1:35
+
+(samp.id <- seqGetData(genofile_mt, "sample.id"))
+samp.id.selected <- samp.id[!str_detect(samp.id, "TcV") ]
+head(variant.id <- seqGetData(genofile_mt, "variant.id"))
+seqSetFilter(genofile_mt, sample.id=samp.id.selected)
+
+#snpgdsSummary(genofile)
+snpset <- snpgdsLDpruning(genofile_mt, 
+                          sample.id = samp.id.selected,
+                          ld.threshold=0.2,autosome.only = FALSE)
+snpset.id <- unlist(unname(snpset))
+pca <- snpgdsPCA(genofile_mt, sample.id=samp.id.selected,snp.id=snpset.id,num.thread=2,autosome.only=FALSE)
+pc.percent <- pca$varprop*100
+head(round(pc.percent, 2))
+
+tab <- data.frame(sample.id = pca$sample.id,
+    EV1 = pca$eigenvect[,1],    # the first eigenvector
+    EV2 = pca$eigenvect[,2],    # the second eigenvector
+    stringsAsFactors = FALSE)
+
+tab_m <- merge(tab, metadata)
+
+ggplot(tab_m, aes(x=EV1, y=EV2, color = DTU)) +
+  geom_point(size = 3, shape=21, aes(fill = DTU),alpha = 0.8) +
+  theme_classic()
+#plot(tab_m$EV2, tab_m$EV1, xlab="PC1", ylab="PC2", col=tab_m$DTU)
+
+
+seqClose(genofile_mt)
+
+
+```
