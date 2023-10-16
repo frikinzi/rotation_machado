@@ -1,7 +1,7 @@
 library(dplyr)
 library(readr)
 
-dxy_table <- read_tsv("chr6_results.tsv")
+dxy_table <- read_tsv("chr4_results.tsv")
 
 grouped <-dxy_table %>%
   group_by(pop1,pop2,start_window, end_window) 
@@ -13,11 +13,11 @@ result_df <- as.data.frame(result_df)
 
 # filter haplotype 1 vs TcII
 TcVH1vsTcII <- result_df %>%
-  filter(pop1 == "TcVI-H1", pop2 == "TcII")
+  filter(pop1 == "TcV-H1", pop2 == "TcII")
 
 # filter haplotype 2 vs TcII
 TcVH2vsTcII <- result_df %>%
-  filter(pop1 == "TcVI-H2", pop2 == "TcII")
+  filter(pop1 == "TcV-H2", pop2 == "TcII")
 
 # filter TcII vs TcIII
 TcIIIvsTcII <- result_df %>%
